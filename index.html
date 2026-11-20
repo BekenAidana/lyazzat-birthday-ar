@@ -17,9 +17,15 @@
     <link rel="stylesheet" href="./css/style.css" />
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
     <link rel="modulepreload" href="./js/app.js" />
+    <link rel="preload" href="./assets/marker-preview.jpg" as="image" />
     <link rel="prefetch" href="./models/main.glb" as="fetch" crossorigin />
-    <link rel="prefetch" href="./models/anim-00.glb" as="fetch" crossorigin />
     <link rel="prefetch" href="./assets/targets.mind" as="fetch" crossorigin />
+    <link
+      rel="prefetch"
+      href="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js"
+      as="script"
+      crossorigin
+    />
     <script type="importmap">
       {
         "imports": {
@@ -63,7 +69,14 @@
       <div class="intro">
         <p class="intro-kicker">UNKNOWN CHARACTER</p>
         <div class="intro-art">
-          <img src="./assets/marker.png" alt="Mystery character card" />
+          <img
+            src="./assets/marker-preview.jpg"
+            alt="Mystery character card"
+            width="512"
+            height="682"
+            decoding="async"
+            fetchpriority="high"
+          />
           <div class="intro-glow"></div>
         </div>
         <h1 class="intro-name">ЛЯЗЗАТ</h1>

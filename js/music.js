@@ -6,6 +6,8 @@ let master = null;
 let timer = null;
 let muted = false;
 let started = false;
+let resuming = false;
+let lastResumeAt = 0;
 
 function setMuteUi(btn) {
   if (!btn) return;
@@ -13,11 +15,35 @@ function setMuteUi(btn) {
   btn.classList.toggle("muted", muted);
 }
 
+function wireAudioKeepAlive() {
+  if (!audioEl || audioEl.dataset.keepAlive) return;
+  audioEl.dataset.keepAlive = "1";
+
+  // iOS/Safari часто ставит на паузу после камеры / ухода с вкладки
+  audioEl.addEventListener("pause", () => {
+    if (muted || !started || document.hidden) return;
+    if (Date.now() - lastResumeAt < 800) return;
+    resumeMusic();
+  });
+
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden && started && !muted) resumeMusic();
+  });
+
+  window.addEventListener("pageshow", () => {
+    if (started && !muted) resumeMusic();
+  });
+}
+
 async function tryStartMp3() {
   audioEl = new Audio("./assets/music.mp3");
   audioEl.loop = true;
+  audioEl.preload = "auto";
   audioEl.volume = 0.45;
   audioEl.playsInline = true;
+  audioEl.setAttribute("playsinline", "");
+  audioEl.setAttribute("webkit-playsinline", "");
+  wireAudioKeepAlive();
   await audioEl.play();
   return true;
 }
@@ -79,8 +105,32 @@ async function startSynth() {
   scheduleLoop(ctx.currentTime + 0.05);
 }
 
+/** После камеры / паузы Safari — снова запустить звук */
+export async function resumeMusic() {
+  if (!started || muted || resuming) return;
+  resuming = true;
+  lastResumeAt = Date.now();
+  try {
+    if (audioEl) {
+      audioEl.muted = false;
+      if (audioEl.paused) await audioEl.play();
+    }
+    if (ctx && ctx.state === "suspended") await ctx.resume();
+    if (master && ctx) {
+      master.gain.setTargetAtTime(0.35, ctx.currentTime, 0.03);
+    }
+  } catch {
+    // жест пользователя мог уже «протухнуть» — mute-кнопка / стрелки всё ещё могут оживить
+  } finally {
+    resuming = false;
+  }
+}
+
 export async function startMusic() {
-  if (started) return;
+  if (started) {
+    await resumeMusic();
+    return;
+  }
   started = true;
   muted = false;
   try {
@@ -99,6 +149,9 @@ export function toggleMute(btn) {
   }
   if (master && ctx) {
     master.gain.setTargetAtTime(muted ? 0 : 0.35, ctx.currentTime, 0.03);
+  }
+  if (ctx && !muted && ctx.state === "suspended") {
+    ctx.resume().catch(() => {});
   }
   setMuteUi(btn);
 }

@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { startMusic, toggleMute } from "./music.js";
+import { startMusic, resumeMusic, toggleMute } from "./music.js";
 
 const STATUS = document.getElementById("status");
 const LABEL = document.getElementById("emote-label");
@@ -160,7 +160,8 @@ function placeCharacterOnMarker(model) {
       o.frustumCulled = false;
       o.castShadow = false;
       if (o.material) {
-        o.material.side = THREE.FrontSide;
+        // DoubleSide — на телефоне иногда пропадает из‑за нормалей/каллинга
+        o.material.side = THREE.DoubleSide;
         o.material.needsUpdate = true;
       }
     }
@@ -169,8 +170,9 @@ function placeCharacterOnMarker(model) {
   const box = new THREE.Box3().setFromObject(model);
   const size = box.getSize(new THREE.Vector3());
   const center = box.getCenter(new THREE.Vector3());
-  const targetHeight = 0.95;
-  const scale = targetHeight / (size.y || 1);
+  // Чуть меньше — чтобы точно попадала в кадр над карточкой
+  const targetHeight = 0.75;
+  const scale = targetHeight / Math.max(size.y, 0.001);
   model.scale.setScalar(scale);
   model.position.set(
     -center.x * scale,
@@ -179,7 +181,7 @@ function placeCharacterOnMarker(model) {
   );
 
   rig.add(model);
-  // Стоит из карточки к камере, не вверх ногами
+  // MindAR: плоскость метки = XY, наружу к камере = +Z
   rig.rotation.x = -Math.PI / 2;
   rig.rotation.z = Math.PI;
 
@@ -235,42 +237,18 @@ async function setupAR() {
   ]);
 
   const { root, model } = placeCharacterOnMarker(mainGltf.scene);
-
-  // Следим за меткой плавно, потом фиксируем позу — без прыжков
-  const pivot = new THREE.Object3D();
-  anchor.group.add(pivot);
-  const holder = new THREE.Group();
-  holder.visible = false;
-  holder.add(root);
-  scene.add(holder);
-
-  const _pos = new THREE.Vector3();
-  const _quat = new THREE.Quaternion();
-  const _scl = new THREE.Vector3();
-  const _lastPos = new THREE.Vector3();
-  let tracking = false;
-  let locked = false;
-  let stableTime = 0;
+  // Снова прямо на якорь MindAR — world-lock уводил модель из кадра
+  root.visible = false;
+  anchor.group.add(root);
 
   anchor.onTargetFound = () => {
-    tracking = true;
-    locked = false;
-    stableTime = 0;
+    root.visible = true;
     unlockShown = false;
-    holder.visible = true;
-    pivot.updateWorldMatrix(true, false);
-    pivot.matrixWorld.decompose(_pos, _quat, _scl);
-    holder.position.copy(_pos);
-    holder.quaternion.copy(_quat);
-    _lastPos.copy(_pos);
-    setStatus("Держи ровно… unlocking");
+    setStatus("Character unlocked!");
     showUnlock();
   };
   anchor.onTargetLost = () => {
-    tracking = false;
-    locked = false;
-    stableTime = 0;
-    holder.visible = false;
+    root.visible = false;
     setStatus("Наведи на карточку с силуэтом");
   };
 
@@ -291,35 +269,6 @@ async function setupAR() {
 
   renderer.setAnimationLoop(() => {
     const dt = clock.getDelta();
-    if (tracking) {
-      pivot.updateWorldMatrix(true, false);
-      pivot.matrixWorld.decompose(_pos, _quat, _scl);
-
-      if (!locked) {
-        // Сильное сглаживание
-        const a = 1 - Math.exp(-5 * dt);
-        holder.position.lerp(_pos, a);
-        holder.quaternion.slerp(_quat, a);
-
-        const jump = holder.position.distanceTo(_pos);
-        const still = _lastPos.distanceTo(_pos);
-        _lastPos.copy(_pos);
-
-        // Если метка почти не прыгает ~0.45с — зафиксировать
-        if (still < 0.004 && jump < 0.02) {
-          stableTime += dt;
-          if (stableTime > 0.45) {
-            locked = true;
-            holder.position.copy(_pos);
-            holder.quaternion.copy(_quat);
-            setStatus("Метка зафиксирована ✓");
-          }
-        } else {
-          stableTime = 0;
-        }
-      }
-      // locked: позицию больше не трогаем — модель стоит ровно
-    }
     if (mixer) mixer.update(dt);
     if (confetti) confetti.update();
     renderer.render(scene, camera);
@@ -336,8 +285,12 @@ function nextEmote(dir = 1) {
 START_BTN.addEventListener("click", async () => {
   START_BTN.disabled = true;
   try {
-    await startMusic();
+    // Музыку не ждём — иначе 2МБ mp3 блокирует камеру
+    const musicReady = startMusic().catch(() => {});
     await setupAR();
+    await musicReady;
+    // Камера на iOS часто глотает звук — поднять сразу после старта AR
+    await resumeMusic();
   } catch (err) {
     console.error(err);
     setStatus("Ошибка: " + (err?.message || err));
@@ -345,8 +298,14 @@ START_BTN.addEventListener("click", async () => {
   }
 });
 
-PREV_BTN.addEventListener("click", () => nextEmote(-1));
-NEXT_BTN.addEventListener("click", () => nextEmote(1));
+PREV_BTN.addEventListener("click", () => {
+  resumeMusic();
+  nextEmote(-1);
+});
+NEXT_BTN.addEventListener("click", () => {
+  resumeMusic();
+  nextEmote(1);
+});
 MUTE_BTN?.addEventListener("click", () => toggleMute(MUTE_BTN));
 
 window.addEventListener("keydown", (e) => {
