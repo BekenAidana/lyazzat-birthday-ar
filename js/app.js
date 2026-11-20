@@ -31,16 +31,22 @@ function setLabel(text) {
   if (LABEL) LABEL.textContent = text;
 }
 
+function sideX() {
+  // Преимущественно по бокам экрана
+  return Math.random() < 0.5
+    ? Math.random() * 0.22
+    : 0.78 + Math.random() * 0.22;
+}
+
 function createConfetti(canvas) {
   const ctx = canvas.getContext("2d");
-  // Крупнее, но меньше штук
-  const pieces = Array.from({ length: 18 }, () => ({
-    x: Math.random(),
+  const pieces = Array.from({ length: 10 }, () => ({
+    x: sideX(),
     y: Math.random() * -1,
-    s: 14 + Math.random() * 18,
-    v: 0.0018 + Math.random() * 0.0035,
+    s: 4 + Math.random() * 5,
+    v: 0.0015 + Math.random() * 0.0025,
     r: Math.random() * Math.PI,
-    vr: (Math.random() - 0.5) * 0.08,
+    vr: (Math.random() - 0.5) * 0.06,
     c: ["#FFE566", "#00D4FF", "#FF6B35", "#FFFFFF", "#7CFF6B"][
       (Math.random() * 5) | 0
     ],
@@ -62,7 +68,7 @@ function createConfetti(canvas) {
         p.r += p.vr;
         if (p.y > 1.1) {
           p.y = -0.05;
-          p.x = Math.random();
+          p.x = sideX();
         }
         ctx.save();
         ctx.translate(p.x * canvas.width, p.y * canvas.height);
@@ -173,6 +179,9 @@ async function setupAR() {
     uiLoading: "no",
     uiScanning: "yes",
     uiError: "yes",
+    // Сглаживание трекинга — меньше дёрганья/«треска» позы
+    filterMinCF: 0.0001,
+    filterBeta: 0.001,
   });
 
   const { renderer, scene, camera } = mindarThree;
@@ -192,7 +201,26 @@ async function setupAR() {
   ]);
 
   const { root, model } = placeCharacterOnMarker(mainGltf.scene);
-  anchor.group.add(root);
+  // Плавное следование за меткой (меньше дрожи без калибровки)
+  const smooth = new THREE.Group();
+  smooth.visible = false;
+  smooth.add(root);
+  scene.add(smooth);
+  let tracking = false;
+  const _pos = new THREE.Vector3();
+  const _quat = new THREE.Quaternion();
+  const _scale = new THREE.Vector3();
+  anchor.onTargetFound = () => {
+    tracking = true;
+    smooth.visible = true;
+    anchor.group.matrixWorld.decompose(_pos, _quat, _scale);
+    smooth.position.copy(_pos);
+    smooth.quaternion.copy(_quat);
+  };
+  anchor.onTargetLost = () => {
+    tracking = false;
+    smooth.visible = false;
+  };
 
   const manifest = await fetch(MANIFEST_URL).then((r) => r.json());
   clipSlots = manifest.clips.map((entry) => ({
@@ -211,6 +239,12 @@ async function setupAR() {
 
   renderer.setAnimationLoop(() => {
     const dt = clock.getDelta();
+    if (tracking) {
+      anchor.group.matrixWorld.decompose(_pos, _quat, _scale);
+      const a = 1 - Math.exp(-8 * dt);
+      smooth.position.lerp(_pos, a);
+      smooth.quaternion.slerp(_quat, a);
+    }
     if (mixer) mixer.update(dt);
     if (confetti) confetti.update();
     renderer.render(scene, camera);
