@@ -87,6 +87,7 @@
 
       const loader = new GLTFLoader();
       const manifest = await fetch("./models/manifest.json").then((r) => r.json());
+      label.textContent = "Загрузка модели…";
       const main = await loader.loadAsync("./models/main.glb");
       const model = main.scene;
       const box = new THREE.Box3().setFromObject(model);
@@ -98,28 +99,47 @@
       scene.add(model);
 
       const mixer = new THREE.AnimationMixer(model);
-      const clips = [];
-      for (const entry of manifest.clips) {
-        label.textContent = "Загрузка " + entry.label + "…";
-        const g = await loader.loadAsync("./models/" + entry.file);
-        if (g.animations[0]) {
-          const clip = g.animations[0].clone();
-          clip.name = entry.label;
-          clips.push({ label: entry.label, clip });
-        }
+      const slots = manifest.clips.map((e) => ({ ...e, clip: null }));
+      if (main.animations?.[0] && slots[0]?.file === "main.glb") {
+        slots[0].clip = main.animations[0].clone();
+        slots[0].clip.name = slots[0].label;
       }
 
       let index = 0;
       let action = null;
-      function play(i) {
-        index = (i + clips.length) % clips.length;
-        const next = mixer.clipAction(clips[index].clip);
+      const inflight = new Map();
+
+      async function ensure(i) {
+        const slot = slots[i];
+        if (slot.clip) return slot.clip;
+        if (inflight.has(i)) return inflight.get(i);
+        const p = loader.loadAsync("./models/" + slot.file).then((g) => {
+          const clip = g.animations[0].clone();
+          clip.name = slot.label;
+          slot.clip = clip;
+          return clip;
+        });
+        inflight.set(i, p);
+        try {
+          return await p;
+        } finally {
+          inflight.delete(i);
+        }
+      }
+
+      async function play(i) {
+        index = (i + slots.length) % slots.length;
+        label.textContent = `${index + 1}/${slots.length} · ${slots[index].label}…`;
+        const clip = await ensure(index);
+        const next = mixer.clipAction(clip);
         next.reset().setLoop(THREE.LoopRepeat, Infinity).fadeIn(0.2).play();
         if (action && action !== next) action.fadeOut(0.2);
         action = next;
-        label.textContent = `${index + 1}/${clips.length} · ${clips[index].label}`;
+        label.textContent = `${index + 1}/${slots.length} · ${slots[index].label}`;
+        ensure((index + 1) % slots.length).catch(() => {});
       }
-      play(0);
+
+      await play(0);
 
       document.getElementById("prev").onclick = () => play(index - 1);
       document.getElementById("next").onclick = () => play(index + 1);

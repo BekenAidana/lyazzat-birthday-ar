@@ -13,7 +13,7 @@ const CONFETTI_CANVAS = document.getElementById("confetti");
 const MANIFEST_URL = "./models/manifest.json";
 const MARKER_MIND = "./assets/targets.mind";
 
-let clips = [];
+let clipSlots = [];
 let clipIndex = 0;
 let mixer = null;
 let currentAction = null;
@@ -21,6 +21,8 @@ const clock = new THREE.Clock();
 let mindarThree = null;
 let started = false;
 let confetti = null;
+const loader = new GLTFLoader();
+const loading = new Map();
 
 function setStatus(text) {
   if (STATUS) STATUS.textContent = text;
@@ -32,7 +34,7 @@ function setLabel(text) {
 
 function createConfetti(canvas) {
   const ctx = canvas.getContext("2d");
-  const pieces = Array.from({ length: 80 }, () => ({
+  const pieces = Array.from({ length: 60 }, () => ({
     x: Math.random(),
     y: Math.random() * -1,
     s: 4 + Math.random() * 6,
@@ -61,10 +63,8 @@ function createConfetti(canvas) {
           p.y = -0.05;
           p.x = Math.random();
         }
-        const x = p.x * canvas.width;
-        const y = p.y * canvas.height;
         ctx.save();
-        ctx.translate(x, y);
+        ctx.translate(p.x * canvas.width, p.y * canvas.height);
         ctx.rotate(p.r);
         ctx.fillStyle = p.c;
         ctx.fillRect(-p.s, -p.s / 2, p.s, p.s / 2);
@@ -74,46 +74,82 @@ function createConfetti(canvas) {
   };
 }
 
-function playClip(index) {
-  if (!mixer || !clips.length) return;
-  clipIndex = ((index % clips.length) + clips.length) % clips.length;
-  const next = clips[clipIndex];
-  const action = mixer.clipAction(next.clip);
-  action.reset();
-  action.setLoop(THREE.LoopRepeat, Infinity);
-  if (currentAction && currentAction !== action) {
-    currentAction.fadeOut(0.25);
+async function ensureClip(index) {
+  const slot = clipSlots[index];
+  if (!slot) return null;
+  if (slot.clip) return slot.clip;
+  if (loading.has(index)) return loading.get(index);
+
+  const promise = (async () => {
+    setStatus(`Загрузка: ${slot.label}…`);
+    const gltf = await loader.loadAsync(`./models/${slot.file}`);
+    if (!gltf.animations?.length) throw new Error("no anim in " + slot.file);
+    const clip = gltf.animations[0].clone();
+    clip.name = slot.label;
+    slot.clip = clip;
+    return clip;
+  })();
+
+  loading.set(index, promise);
+  try {
+    return await promise;
+  } finally {
+    loading.delete(index);
   }
-  action.reset().fadeIn(0.25).play();
-  currentAction = action;
-  setLabel(`${clipIndex + 1}/${clips.length} · ${next.label}`);
 }
 
-async function loadClips(sceneRoot) {
-  const loader = new GLTFLoader();
-  const manifest = await fetch(MANIFEST_URL).then((r) => r.json());
+async function playClip(index) {
+  if (!mixer || !clipSlots.length) return;
+  clipIndex = ((index % clipSlots.length) + clipSlots.length) % clipSlots.length;
+  const slot = clipSlots[clipIndex];
+  setLabel(`${clipIndex + 1}/${clipSlots.length} · ${slot.label}…`);
 
-  for (const entry of manifest.clips) {
-    setStatus(`Загрузка: ${entry.label}…`);
-    const gltf = await loader.loadAsync(`./models/${entry.file}`);
-    if (!gltf.animations?.length) continue;
-    const clip = gltf.animations[0].clone();
-    clip.name = entry.label;
-    clips.push({ label: entry.label, clip, id: entry.id });
+  try {
+    const clip = await ensureClip(clipIndex);
+    const action = mixer.clipAction(clip);
+    action.reset();
+    action.setLoop(THREE.LoopRepeat, Infinity);
+    if (currentAction && currentAction !== action) currentAction.fadeOut(0.2);
+    action.reset().fadeIn(0.2).play();
+    currentAction = action;
+    setLabel(`${clipIndex + 1}/${clipSlots.length} · ${slot.label}`);
+    setStatus("Наведи на метку на карточке");
+
+    // Подгружаем соседние в фоне
+    const next = (clipIndex + 1) % clipSlots.length;
+    const prev = (clipIndex - 1 + clipSlots.length) % clipSlots.length;
+    ensureClip(next).catch(() => {});
+    ensureClip(prev).catch(() => {});
+  } catch (e) {
+    console.error(e);
+    setStatus("Не удалось загрузить эмоут");
+  }
+}
+
+async function initClips(sceneRoot, mainGltf) {
+  const manifest = await fetch(MANIFEST_URL).then((r) => r.json());
+  clipSlots = manifest.clips.map((entry) => ({
+    file: entry.file,
+    label: entry.label,
+    id: entry.id,
+    clip: null,
+  }));
+
+  // Idle сразу из уже загруженного main.glb
+  const idleSlot = clipSlots[0];
+  if (mainGltf.animations?.[0] && idleSlot?.file === "main.glb") {
+    const clip = mainGltf.animations[0].clone();
+    clip.name = idleSlot.label;
+    idleSlot.clip = clip;
   }
 
   mixer = new THREE.AnimationMixer(sceneRoot);
-  playClip(0);
+  await playClip(0);
 }
 
-/**
- * MindAR: метка в XY, +Z к камере.
- * Ставим персонажа СТОЯ на карточке (карточка на столе / в руках лицом вверх).
- */
 function placeCharacterOnMarker(model) {
   const rig = new THREE.Group();
 
-  // 1) Нормализуем Y-up модель: ступни в нуле
   const box = new THREE.Box3().setFromObject(model);
   const size = box.getSize(new THREE.Vector3());
   const center = box.getCenter(new THREE.Vector3());
@@ -126,11 +162,8 @@ function placeCharacterOnMarker(model) {
     -center.z * scale
   );
   rig.add(model);
-
-  // 2) Поворачиваем: рост уходит вдоль +Z (из метки «вверх» к камере)
   rig.rotation.x = -Math.PI / 2;
 
-  // Тень на метке
   const shadow = new THREE.Mesh(
     new THREE.CircleGeometry(0.22, 48),
     new THREE.MeshBasicMaterial({
@@ -141,9 +174,7 @@ function placeCharacterOnMarker(model) {
     })
   );
   shadow.position.z = 0.005;
-  // Тень в плоскости метки — отдельный sibling, не внутри rig
 
-  // Табличка над головой (в пространстве метки: z = высота)
   const titleCanvas = document.createElement("canvas");
   titleCanvas.width = 1024;
   titleCanvas.height = 256;
@@ -194,13 +225,12 @@ async function setupAR() {
   scene.add(key);
 
   const anchor = mindarThree.addAnchor(0);
-  const loader = new GLTFLoader();
   setStatus("Загрузка модели…");
   const mainGltf = await loader.loadAsync("./models/main.glb");
   const { root, model } = placeCharacterOnMarker(mainGltf.scene);
   anchor.group.add(root);
 
-  await loadClips(model);
+  await initClips(model, mainGltf);
 
   confetti = createConfetti(CONFETTI_CANVAS);
 
@@ -208,6 +238,9 @@ async function setupAR() {
   started = true;
   OVERLAY.classList.add("hidden");
   setStatus("Наведи на метку на карточке");
+
+  // Фоном подтянуть соседние эмоуты
+  ensureClip(1).catch(() => {});
 
   renderer.setAnimationLoop(() => {
     const dt = clock.getDelta();
