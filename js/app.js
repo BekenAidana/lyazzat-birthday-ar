@@ -216,12 +216,40 @@ async function setupAR() {
   ]);
 
   const { root, model } = placeCharacterOnMarker(mainGltf.scene);
-  anchor.group.add(root);
+
+  // Следим за меткой плавно, потом фиксируем позу — без прыжков
+  const pivot = new THREE.Object3D();
+  anchor.group.add(pivot);
+  const holder = new THREE.Group();
+  holder.visible = false;
+  holder.add(root);
+  scene.add(holder);
+
+  const _pos = new THREE.Vector3();
+  const _quat = new THREE.Quaternion();
+  const _scl = new THREE.Vector3();
+  const _lastPos = new THREE.Vector3();
+  let tracking = false;
+  let locked = false;
+  let stableTime = 0;
 
   anchor.onTargetFound = () => {
-    setStatus("Метка найдена ✓");
+    tracking = true;
+    locked = false;
+    stableTime = 0;
+    holder.visible = true;
+    pivot.updateWorldMatrix(true, false);
+    pivot.matrixWorld.decompose(_pos, _quat, _scl);
+    holder.position.copy(_pos);
+    holder.quaternion.copy(_quat);
+    _lastPos.copy(_pos);
+    setStatus("Держи ровно… фиксирую");
   };
   anchor.onTargetLost = () => {
+    tracking = false;
+    locked = false;
+    stableTime = 0;
+    holder.visible = false;
     setStatus("Ищу метку… наведи на print/card-front");
   };
 
@@ -242,6 +270,35 @@ async function setupAR() {
 
   renderer.setAnimationLoop(() => {
     const dt = clock.getDelta();
+    if (tracking) {
+      pivot.updateWorldMatrix(true, false);
+      pivot.matrixWorld.decompose(_pos, _quat, _scl);
+
+      if (!locked) {
+        // Сильное сглаживание
+        const a = 1 - Math.exp(-5 * dt);
+        holder.position.lerp(_pos, a);
+        holder.quaternion.slerp(_quat, a);
+
+        const jump = holder.position.distanceTo(_pos);
+        const still = _lastPos.distanceTo(_pos);
+        _lastPos.copy(_pos);
+
+        // Если метка почти не прыгает ~0.45с — зафиксировать
+        if (still < 0.004 && jump < 0.02) {
+          stableTime += dt;
+          if (stableTime > 0.45) {
+            locked = true;
+            holder.position.copy(_pos);
+            holder.quaternion.copy(_quat);
+            setStatus("Метка зафиксирована ✓");
+          }
+        } else {
+          stableTime = 0;
+        }
+      }
+      // locked: позицию больше не трогаем — модель стоит ровно
+    }
     if (mixer) mixer.update(dt);
     if (confetti) confetti.update();
     renderer.render(scene, camera);
