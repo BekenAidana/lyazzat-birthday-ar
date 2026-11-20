@@ -1,6 +1,5 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { MindARThree } from "mindar-image-three";
 
 const STATUS = document.getElementById("status");
 const LABEL = document.getElementById("emote-label");
@@ -34,7 +33,7 @@ function setLabel(text) {
 
 function createConfetti(canvas) {
   const ctx = canvas.getContext("2d");
-  const pieces = Array.from({ length: 60 }, () => ({
+  const pieces = Array.from({ length: 48 }, () => ({
     x: Math.random(),
     y: Math.random() * -1,
     s: 4 + Math.random() * 6,
@@ -81,7 +80,6 @@ async function ensureClip(index) {
   if (loading.has(index)) return loading.get(index);
 
   const promise = (async () => {
-    setStatus(`Загрузка: ${slot.label}…`);
     const gltf = await loader.loadAsync(`./models/${slot.file}`);
     if (!gltf.animations?.length) throw new Error("no anim in " + slot.file);
     const clip = gltf.animations[0].clone();
@@ -113,9 +111,7 @@ async function playClip(index) {
     action.reset().fadeIn(0.2).play();
     currentAction = action;
     setLabel(`${clipIndex + 1}/${clipSlots.length} · ${slot.label}`);
-    setStatus("Наведи на метку на карточке");
 
-    // Подгружаем соседние в фоне
     const next = (clipIndex + 1) % clipSlots.length;
     const prev = (clipIndex - 1 + clipSlots.length) % clipSlots.length;
     ensureClip(next).catch(() => {});
@@ -124,20 +120,6 @@ async function playClip(index) {
     console.error(e);
     setStatus("Не удалось загрузить эмоут");
   }
-}
-
-async function initClips(sceneRoot, mainGltf) {
-  const manifest = await fetch(MANIFEST_URL).then((r) => r.json());
-  clipSlots = manifest.clips.map((entry) => ({
-    file: entry.file,
-    label: entry.label,
-    id: entry.id,
-    clip: null,
-  }));
-
-  mixer = new THREE.AnimationMixer(sceneRoot);
-  // Главный эмоут — Celebrating (первый в manifest)
-  await playClip(0);
 }
 
 function placeCharacterOnMarker(model) {
@@ -154,7 +136,7 @@ function placeCharacterOnMarker(model) {
     -box.min.y * scale,
     -center.z * scale
   );
-  // Табличка в локальном пространстве модели: над головой, лицом туда же, куда она
+
   const titleCanvas = document.createElement("canvas");
   titleCanvas.width = 1024;
   titleCanvas.height = 256;
@@ -176,13 +158,11 @@ function placeCharacterOnMarker(model) {
       side: THREE.DoubleSide,
     })
   );
-  // Y-up модель смотрит в -Z → плоскость разворачиваем к зрителю как лицо
   title.position.set(0, size.y * scale + 0.08, 0);
   title.rotation.y = Math.PI;
 
   rig.add(model);
   rig.add(title);
-  // Стоит на метке (+Z из карточки), не вверх ногами
   rig.rotation.x = -Math.PI / 2;
   rig.rotation.z = Math.PI;
 
@@ -204,7 +184,11 @@ function placeCharacterOnMarker(model) {
 }
 
 async function setupAR() {
-  setStatus("Готовим камеру…");
+  setStatus("Подключаем камеру…");
+
+  // Тяжёлый MindAR только по кнопке Start
+  const { MindARThree } = await import("mindar-image-three");
+
   mindarThree = new MindARThree({
     container: document.getElementById("ar-container"),
     imageTargetSrc: MARKER_MIND,
@@ -215,29 +199,37 @@ async function setupAR() {
 
   const { renderer, scene, camera } = mindarThree;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-
   scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.2));
   const key = new THREE.DirectionalLight(0xffffff, 1.4);
   key.position.set(2, 4, 3);
   scene.add(key);
 
   const anchor = mindarThree.addAnchor(0);
-  setStatus("Загрузка модели…");
-  const mainGltf = await loader.loadAsync("./models/main.glb");
+
+  // Камера + модель параллельно
+  setStatus("Камера + модель…");
+  const [mainGltf] = await Promise.all([
+    loader.loadAsync("./models/main.glb"),
+    mindarThree.start(),
+  ]);
+
   const { root, model } = placeCharacterOnMarker(mainGltf.scene);
   anchor.group.add(root);
 
-  await initClips(model, mainGltf);
+  const manifest = await fetch(MANIFEST_URL).then((r) => r.json());
+  clipSlots = manifest.clips.map((entry) => ({
+    file: entry.file,
+    label: entry.label,
+    id: entry.id,
+    clip: null,
+  }));
+  mixer = new THREE.AnimationMixer(model);
 
   confetti = createConfetti(CONFETTI_CANVAS);
-
-  await mindarThree.start();
   started = true;
   OVERLAY.classList.add("hidden");
   setStatus("Наведи на метку на карточке");
-
-  // Фоном все клипы (файлы уже без мешей, ~3MB суммарно)
-  Promise.all(clipSlots.map((_, i) => ensureClip(i))).catch(() => {});
+  setLabel("Загрузка Celebrating…");
 
   renderer.setAnimationLoop(() => {
     const dt = clock.getDelta();
@@ -245,6 +237,12 @@ async function setupAR() {
     if (confetti) confetti.update();
     renderer.render(scene, camera);
   });
+
+  // Главный эмоут сразу после старта камеры, остальное в фоне
+  await playClip(0);
+  for (let i = 1; i < clipSlots.length; i++) {
+    ensureClip(i).catch(() => {});
+  }
 }
 
 function nextEmote(dir = 1) {
