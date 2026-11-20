@@ -1,11 +1,11 @@
 :root {
-  --ink: #0b1d3a;
+  --ink: #061820;
   --gold: #ffe8a3;
   --fn-yellow: #ffe566;
-  --fn-cyan: #00d4ff;
-  --coral: #e76f51;
-  --sand: #f4a261;
-  --glass: rgba(11, 29, 58, 0.72);
+  --fn-cyan: #7ef0ff;
+  --teal: #0b3d44;
+  --teal-deep: #04161c;
+  --glass: rgba(6, 24, 32, 0.72);
 }
 
 * {
@@ -19,7 +19,7 @@ body {
   height: 100%;
   overflow: hidden;
   font-family: "Avenir Next", "Segoe UI", sans-serif;
-  background: #050b16;
+  background: var(--teal-deep);
   color: #fff;
 }
 
@@ -42,7 +42,7 @@ body {
 .unlock-banner {
   position: fixed;
   left: 50%;
-  top: 42%;
+  top: 38%;
   z-index: 15;
   transform: translate(-50%, -50%) scale(0.85);
   text-align: center;
@@ -66,29 +66,37 @@ body {
   transform: translate(-50%, -60%) scale(1.05);
 }
 
-.unlock-kicker {
+.unlock-kicker,
+.intro-kicker {
   margin: 0;
   font-family: "Luckiest Guy", system-ui, sans-serif;
-  font-size: clamp(22px, 6vw, 34px);
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   color: var(--fn-yellow);
   -webkit-text-stroke: 2px #0a1628;
   paint-order: stroke fill;
   text-shadow:
     0 3px 0 #061018,
-    0 0 20px rgba(0, 212, 255, 0.45);
+    0 0 20px rgba(126, 240, 255, 0.4);
 }
 
-.unlock-level {
+.unlock-kicker {
+  font-size: clamp(22px, 6vw, 34px);
+}
+
+.unlock-level,
+.intro-level {
   margin: 6px 0 0;
   font-family: "Luckiest Guy", system-ui, sans-serif;
-  font-size: clamp(28px, 8vw, 44px);
   color: #fff;
   -webkit-text-stroke: 3px #0a1628;
   paint-order: stroke fill;
   text-shadow:
     0 4px 0 #061018,
     0 0 24px rgba(255, 229, 102, 0.5);
+}
+
+.unlock-level {
+  font-size: clamp(28px, 8vw, 44px);
 }
 
 #hud {
@@ -120,7 +128,7 @@ body {
   text-shadow:
     0 5px 0 #0a1628,
     0 10px 22px rgba(0, 0, 0, 0.45),
-    0 0 28px rgba(0, 212, 255, 0.35);
+    0 0 28px rgba(126, 240, 255, 0.35);
   transform: rotate(-2deg);
 }
 
@@ -129,6 +137,7 @@ body {
   margin: 8px 0 0;
   font-size: 14px;
   opacity: 0.95;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.7);
 }
 
 #controls {
@@ -142,76 +151,166 @@ body {
 .nav-btn {
   width: 64px;
   height: 64px;
-  border: 0;
+  border: 1px solid rgba(255, 229, 102, 0.35);
   border-radius: 50%;
   background: var(--glass);
-  color: var(--gold);
+  color: var(--fn-yellow);
   font-size: 28px;
   backdrop-filter: blur(10px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.35),
+    0 0 16px rgba(126, 240, 255, 0.12);
 }
 
 .nav-btn:active {
   transform: scale(0.96);
-  background: rgba(231, 111, 81, 0.85);
-  color: #fff;
+  background: rgba(255, 229, 102, 0.25);
 }
 
 .nav-btn.muted {
   opacity: 0.45;
 }
 
+/* ——— Start / greeting in card style ——— */
 #start-overlay {
   position: fixed;
   inset: 0;
   z-index: 20;
   display: grid;
   place-items: center;
-  padding: 24px;
+  padding: 20px;
+  overflow: auto;
   background:
-    radial-gradient(circle at 20% 20%, rgba(244, 162, 97, 0.35), transparent 40%),
-    radial-gradient(circle at 80% 10%, rgba(231, 111, 81, 0.3), transparent 35%),
-    linear-gradient(160deg, #0b1d3a, #163b6b 55%, #1b4332);
+    radial-gradient(ellipse at 50% 30%, rgba(255, 200, 80, 0.22), transparent 42%),
+    radial-gradient(ellipse at 50% 70%, rgba(40, 180, 200, 0.18), transparent 45%),
+    linear-gradient(180deg, #062028 0%, #0a3a42 45%, #04141a 100%);
 }
 
 #start-overlay.hidden {
   display: none;
 }
 
-.card {
-  width: min(420px, 100%);
-  padding: 28px 24px;
-  border-radius: 24px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 232, 163, 0.35);
-  backdrop-filter: blur(16px);
+.scan-frame {
+  position: absolute;
+  inset: 18px;
+  pointer-events: none;
+}
+
+.corner {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+}
+
+.corner.tl {
+  top: 0;
+  left: 0;
+  border-right: 0;
+  border-bottom: 0;
+}
+
+.corner.tr {
+  top: 0;
+  right: 0;
+  border-left: 0;
+  border-bottom: 0;
+}
+
+.corner.bl {
+  bottom: 0;
+  left: 0;
+  border-right: 0;
+  border-top: 0;
+}
+
+.corner.br {
+  bottom: 0;
+  right: 0;
+  border-left: 0;
+  border-top: 0;
+}
+
+.intro {
+  position: relative;
+  width: min(380px, 100%);
   text-align: center;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+  padding: 12px 8px 20px;
 }
 
-.card h1 {
-  margin: 0 0 8px;
-  font-size: 28px;
-  color: var(--gold);
-  letter-spacing: 0.08em;
+.intro-kicker {
+  font-size: clamp(14px, 3.6vw, 18px);
+  margin-bottom: 12px;
+  opacity: 0.95;
 }
 
-.card p {
-  margin: 0 0 20px;
+.intro-art {
+  position: relative;
+  margin: 0 auto 14px;
+  width: min(260px, 70vw);
+  aspect-ratio: 3 / 4;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 1px rgba(255, 229, 102, 0.35),
+    0 20px 50px rgba(0, 0, 0, 0.45),
+    0 0 40px rgba(255, 200, 80, 0.2);
+}
+
+.intro-art img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.intro-glow {
+  position: absolute;
+  inset: auto 10% -10%;
+  height: 40%;
+  background: radial-gradient(ellipse, rgba(255, 220, 100, 0.45), transparent 70%);
+  pointer-events: none;
+}
+
+.intro-name {
+  margin: 0;
+  font-family: "Luckiest Guy", system-ui, sans-serif;
+  font-size: clamp(36px, 10vw, 52px);
+  color: var(--fn-yellow);
+  -webkit-text-stroke: 3px #0a1628;
+  paint-order: stroke fill;
+  letter-spacing: 0.06em;
+  text-shadow:
+    0 4px 0 #061018,
+    0 0 28px rgba(126, 240, 255, 0.35);
+}
+
+.intro-level {
+  font-size: clamp(20px, 5vw, 28px);
+  margin: 4px 0 12px;
+}
+
+.intro-copy {
+  margin: 0 0 18px;
+  font-size: 14px;
   line-height: 1.45;
-  opacity: 0.92;
+  color: rgba(255, 255, 255, 0.88);
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.5);
 }
 
 #start-btn {
   appearance: none;
-  border: 0;
+  border: 1px solid rgba(255, 229, 102, 0.65);
   border-radius: 999px;
   padding: 14px 28px;
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--ink);
-  background: linear-gradient(135deg, var(--gold), var(--sand));
-  box-shadow: 0 10px 30px rgba(244, 162, 97, 0.35);
+  font-family: "Luckiest Guy", system-ui, sans-serif;
+  font-size: 18px;
+  letter-spacing: 0.06em;
+  color: #0a1628;
+  background: linear-gradient(180deg, #ffe566, #f0b429);
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.35),
+    0 0 24px rgba(255, 229, 102, 0.35);
 }
 
 #start-btn:disabled {
@@ -221,5 +320,5 @@ body {
 .hint {
   margin-top: 14px;
   font-size: 12px;
-  opacity: 0.75;
+  opacity: 0.7;
 }
