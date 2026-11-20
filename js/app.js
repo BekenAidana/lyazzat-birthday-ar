@@ -136,10 +136,21 @@ async function playClip(index) {
 function placeCharacterOnMarker(model) {
   const rig = new THREE.Group();
 
+  model.traverse((o) => {
+    if (o.isMesh) {
+      o.frustumCulled = false;
+      o.castShadow = false;
+      if (o.material) {
+        o.material.side = THREE.FrontSide;
+        o.material.needsUpdate = true;
+      }
+    }
+  });
+
   const box = new THREE.Box3().setFromObject(model);
   const size = box.getSize(new THREE.Vector3());
   const center = box.getCenter(new THREE.Vector3());
-  const targetHeight = 1.05;
+  const targetHeight = 0.95;
   const scale = targetHeight / (size.y || 1);
   model.scale.setScalar(scale);
   model.position.set(
@@ -149,23 +160,27 @@ function placeCharacterOnMarker(model) {
   );
 
   rig.add(model);
-  // Стоит на карточке лицом вверх к камере
+  // Стоит «из» карточки к камере
   rig.rotation.x = -Math.PI / 2;
 
   const shadow = new THREE.Mesh(
-    new THREE.CircleGeometry(0.32, 48),
+    new THREE.CircleGeometry(0.28, 48),
     new THREE.MeshBasicMaterial({
       color: 0x000000,
       transparent: true,
-      opacity: 0.28,
+      opacity: 0.25,
       depthWrite: false,
     })
   );
-  shadow.position.z = 0.005;
+  shadow.position.z = 0.002;
+  shadow.frustumCulled = false;
 
   const root = new THREE.Group();
   root.add(shadow);
   root.add(rig);
+  // Чуть приподнять над меткой, чтобы не уходила внутрь карточки
+  root.position.z = 0.02;
+  root.frustumCulled = false;
   return { root, model };
 }
 
@@ -200,8 +215,14 @@ async function setupAR() {
   ]);
 
   const { root, model } = placeCharacterOnMarker(mainGltf.scene);
-  // Просто на метке — без кастомной «калибровки»
   anchor.group.add(root);
+
+  anchor.onTargetFound = () => {
+    setStatus("Метка найдена ✓");
+  };
+  anchor.onTargetLost = () => {
+    setStatus("Ищу метку… наведи на print/card-front");
+  };
 
   const manifest = await fetch(MANIFEST_URL).then((r) => r.json());
   clipSlots = manifest.clips.map((entry) => ({
@@ -215,7 +236,7 @@ async function setupAR() {
   confetti = createConfetti(CONFETTI_CANVAS);
   started = true;
   OVERLAY.classList.add("hidden");
-  setStatus("Наведи на метку на карточке");
+  setStatus("Ищу метку… открой print/card-front.png на другом экране");
   setLabel("Загрузка Celebrating…");
 
   renderer.setAnimationLoop(() => {
