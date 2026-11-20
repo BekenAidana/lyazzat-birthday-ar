@@ -33,14 +33,15 @@ function setLabel(text) {
 
 function createConfetti(canvas) {
   const ctx = canvas.getContext("2d");
-  const pieces = Array.from({ length: 48 }, () => ({
+  // Крупнее, но меньше штук
+  const pieces = Array.from({ length: 18 }, () => ({
     x: Math.random(),
     y: Math.random() * -1,
-    s: 4 + Math.random() * 6,
-    v: 0.002 + Math.random() * 0.004,
+    s: 14 + Math.random() * 18,
+    v: 0.0018 + Math.random() * 0.0035,
     r: Math.random() * Math.PI,
-    vr: (Math.random() - 0.5) * 0.1,
-    c: ["#FFE8A3", "#E76F51", "#F4A261", "#FFFFFF", "#2A9D8F"][
+    vr: (Math.random() - 0.5) * 0.08,
+    c: ["#FFE566", "#00D4FF", "#FF6B35", "#FFFFFF", "#7CFF6B"][
       (Math.random() * 5) | 0
     ],
   }));
@@ -54,6 +55,7 @@ function createConfetti(canvas) {
 
   return {
     update() {
+      const dpr = devicePixelRatio || 1;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       for (const p of pieces) {
         p.y += p.v;
@@ -66,7 +68,8 @@ function createConfetti(canvas) {
         ctx.translate(p.x * canvas.width, p.y * canvas.height);
         ctx.rotate(p.r);
         ctx.fillStyle = p.c;
-        ctx.fillRect(-p.s, -p.s / 2, p.s, p.s / 2);
+        const s = p.s * dpr;
+        ctx.fillRect(-s, -s * 0.35, s * 2, s * 0.7);
         ctx.restore();
       }
     },
@@ -128,7 +131,7 @@ function placeCharacterOnMarker(model) {
   const box = new THREE.Box3().setFromObject(model);
   const size = box.getSize(new THREE.Vector3());
   const center = box.getCenter(new THREE.Vector3());
-  const targetHeight = 0.7;
+  const targetHeight = 1.05;
   const scale = targetHeight / (size.y || 1);
   model.scale.setScalar(scale);
   model.position.set(
@@ -137,41 +140,16 @@ function placeCharacterOnMarker(model) {
     -center.z * scale
   );
 
-  const titleCanvas = document.createElement("canvas");
-  titleCanvas.width = 1024;
-  titleCanvas.height = 256;
-  const tctx = titleCanvas.getContext("2d");
-  tctx.fillStyle = "rgba(11,29,58,0.78)";
-  tctx.fillRect(80, 40, 864, 140);
-  tctx.fillStyle = "#FFE8A3";
-  tctx.font = "bold 72px Georgia, serif";
-  tctx.textAlign = "center";
-  tctx.fillText("HAPPY BIRTHDAY", 512, 130);
-  const titleTex = new THREE.CanvasTexture(titleCanvas);
-  titleTex.colorSpace = THREE.SRGBColorSpace;
-  const title = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.85, 0.2),
-    new THREE.MeshBasicMaterial({
-      map: titleTex,
-      transparent: true,
-      depthWrite: false,
-      side: THREE.DoubleSide,
-    })
-  );
-  title.position.set(0, size.y * scale + 0.08, 0);
-  title.rotation.y = Math.PI;
-
   rig.add(model);
-  rig.add(title);
   rig.rotation.x = -Math.PI / 2;
   rig.rotation.z = Math.PI;
 
   const shadow = new THREE.Mesh(
-    new THREE.CircleGeometry(0.22, 48),
+    new THREE.CircleGeometry(0.32, 48),
     new THREE.MeshBasicMaterial({
       color: 0x000000,
       transparent: true,
-      opacity: 0.3,
+      opacity: 0.28,
       depthWrite: false,
     })
   );
