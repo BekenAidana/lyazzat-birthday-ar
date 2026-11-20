@@ -1,11 +1,13 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { startMusic, toggleMute } from "./music.js";
 
 const STATUS = document.getElementById("status");
 const LABEL = document.getElementById("emote-label");
 const START_BTN = document.getElementById("start-btn");
 const PREV_BTN = document.getElementById("prev-btn");
 const NEXT_BTN = document.getElementById("next-btn");
+const MUTE_BTN = document.getElementById("mute-btn");
 const OVERLAY = document.getElementById("start-overlay");
 const CONFETTI_CANVAS = document.getElementById("confetti");
 
@@ -264,6 +266,7 @@ function nextEmote(dir = 1) {
 START_BTN.addEventListener("click", async () => {
   START_BTN.disabled = true;
   try {
+    await startMusic();
     await setupAR();
   } catch (err) {
     console.error(err);
@@ -274,6 +277,7 @@ START_BTN.addEventListener("click", async () => {
 
 PREV_BTN.addEventListener("click", () => nextEmote(-1));
 NEXT_BTN.addEventListener("click", () => nextEmote(1));
+MUTE_BTN?.addEventListener("click", () => toggleMute(MUTE_BTN));
 
 window.addEventListener("keydown", (e) => {
   if (!started) return;

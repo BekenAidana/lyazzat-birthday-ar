@@ -105,6 +105,10 @@ body {
   color: #fff;
 }
 
+.nav-btn.muted {
+  opacity: 0.45;
+}
+
 #start-overlay {
   position: fixed;
   inset: 0;
