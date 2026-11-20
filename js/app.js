@@ -170,8 +170,8 @@ function placeCharacterOnMarker(model) {
   const box = new THREE.Box3().setFromObject(model);
   const size = box.getSize(new THREE.Vector3());
   const center = box.getCenter(new THREE.Vector3());
-  // Чуть меньше — чтобы точно попадала в кадр над карточкой
-  const targetHeight = 0.75;
+  // В 2 раза крупнее
+  const targetHeight = 1.5;
   const scale = targetHeight / Math.max(size.y, 0.001);
   model.scale.setScalar(scale);
   model.position.set(
@@ -182,7 +182,8 @@ function placeCharacterOnMarker(model) {
 
   rig.add(model);
   // MindAR: плоскость метки = XY, наружу к камере = +Z
-  rig.rotation.x = -Math.PI / 2;
+  // +180° по X — лицом к камере, не спиной
+  rig.rotation.x = -Math.PI / 2 + Math.PI;
   rig.rotation.z = Math.PI;
 
   const shadow = new THREE.Mesh(
