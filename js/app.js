@@ -135,15 +135,8 @@ async function initClips(sceneRoot, mainGltf) {
     clip: null,
   }));
 
-  // Idle сразу из уже загруженного main.glb
-  const idleSlot = clipSlots[0];
-  if (mainGltf.animations?.[0] && idleSlot?.file === "main.glb") {
-    const clip = mainGltf.animations[0].clone();
-    clip.name = idleSlot.label;
-    idleSlot.clip = clip;
-  }
-
   mixer = new THREE.AnimationMixer(sceneRoot);
+  // Главный эмоут — Celebrating (первый в manifest)
   await playClip(0);
 }
 
@@ -162,7 +155,9 @@ function placeCharacterOnMarker(model) {
     -center.z * scale
   );
   rig.add(model);
+  // Стоит на метке (+Z к камере), развернута правильно (не вверх ногами)
   rig.rotation.x = -Math.PI / 2;
+  rig.rotation.z = Math.PI;
 
   const shadow = new THREE.Mesh(
     new THREE.CircleGeometry(0.22, 48),

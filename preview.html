@@ -160,12 +160,6 @@
       const mixer = new THREE.AnimationMixer(model);
       const slots = manifest.clips.map((e) => ({ ...e, clip: null, btn: null }));
 
-      // Idle сразу с main
-      if (main.animations?.[0] && slots[0]?.file === "main.glb") {
-        slots[0].clip = main.animations[0].clone();
-        slots[0].clip.name = slots[0].label;
-      }
-
       slots.forEach((slot, i) => {
         const btn = document.createElement("button");
         btn.type = "button";

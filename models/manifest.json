@@ -1,19 +1,14 @@
 {
   "main": "main.glb",
   "clips": [
-    { "file": "main.glb", "label": "Idle", "id": "idle" },
-    { "file": "anim-00.glb", "label": "Action", "id": "00" },
-    { "file": "anim-01.glb", "label": "Brag & Claps", "id": "01" },
+    { "file": "anim-11.glb", "label": "Celebrating", "id": "11" },
     { "file": "anim-02.glb", "label": "Mixamo Groove", "id": "02" },
     { "file": "anim-03.glb", "label": "Mixamo Dance", "id": "03" },
     { "file": "anim-04.glb", "label": "Gorilla Chest Bump", "id": "04" },
     { "file": "anim-05.glb", "label": "Move", "id": "05" },
     { "file": "anim-06.glb", "label": "Dance Shuffle", "id": "06" },
-    { "file": "anim-07.glb", "label": "Dance Shuffle 2", "id": "07" },
     { "file": "anim-08.glb", "label": "Headbanging", "id": "08" },
     { "file": "anim-09.glb", "label": "Call Me", "id": "09" },
-    { "file": "anim-10.glb", "label": "Banging Tunes", "id": "10" },
-    { "file": "anim-11.glb", "label": "Celebrating", "id": "11" },
     { "file": "anim-12.glb", "label": "Arm Flex", "id": "12" }
   ]
 }
