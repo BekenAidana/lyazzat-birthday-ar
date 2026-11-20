@@ -39,7 +39,7 @@ async function tryStartMp3() {
   audioEl = new Audio("./assets/music.mp3");
   audioEl.loop = true;
   audioEl.preload = "auto";
-  audioEl.volume = 0.45;
+  audioEl.volume = 1; // было 0.45 → в ~3 раза громче (макс браузера)
   audioEl.playsInline = true;
   audioEl.setAttribute("playsinline", "");
   audioEl.setAttribute("webkit-playsinline", "");
@@ -99,7 +99,7 @@ function scheduleLoop(time) {
 async function startSynth() {
   ctx = new (window.AudioContext || window.webkitAudioContext)();
   master = ctx.createGain();
-  master.gain.value = 0.35;
+  master.gain.value = 1;
   master.connect(ctx.destination);
   if (ctx.state === "suspended") await ctx.resume();
   scheduleLoop(ctx.currentTime + 0.05);
@@ -117,7 +117,7 @@ export async function resumeMusic() {
     }
     if (ctx && ctx.state === "suspended") await ctx.resume();
     if (master && ctx) {
-      master.gain.setTargetAtTime(0.35, ctx.currentTime, 0.03);
+      master.gain.setTargetAtTime(1, ctx.currentTime, 0.03);
     }
   } catch {
     // жест пользователя мог уже «протухнуть» — mute-кнопка / стрелки всё ещё могут оживить
@@ -148,7 +148,7 @@ export function toggleMute(btn) {
     if (!muted) audioEl.play().catch(() => {});
   }
   if (master && ctx) {
-    master.gain.setTargetAtTime(muted ? 0 : 0.35, ctx.currentTime, 0.03);
+    master.gain.setTargetAtTime(muted ? 0 : 1, ctx.currentTime, 0.03);
   }
   if (ctx && !muted && ctx.state === "suspended") {
     ctx.resume().catch(() => {});
