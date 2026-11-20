@@ -239,8 +239,8 @@ async function setupAR() {
   OVERLAY.classList.add("hidden");
   setStatus("Наведи на метку на карточке");
 
-  // Фоном подтянуть соседние эмоуты
-  ensureClip(1).catch(() => {});
+  // Фоном все клипы (файлы уже без мешей, ~3MB суммарно)
+  Promise.all(clipSlots.map((_, i) => ensureClip(i))).catch(() => {});
 
   renderer.setAnimationLoop(() => {
     const dt = clock.getDelta();

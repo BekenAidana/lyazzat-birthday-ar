@@ -2,8 +2,8 @@
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Preview dancer (без AR)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Эмоуты на одной модели</title>
     <style>
       html,
       body {
@@ -18,32 +18,82 @@
         position: fixed;
         inset: 0;
       }
+      #top {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 2;
+        padding: 14px 16px 8px;
+        text-align: center;
+        background: linear-gradient(to bottom, rgba(11, 29, 58, 0.92), transparent);
+        pointer-events: none;
+      }
+      #top h1 {
+        margin: 0;
+        font-size: 15px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        color: #fff;
+      }
+      #label {
+        margin: 6px 0 0;
+        font-size: 18px;
+      }
+      #hint {
+        margin: 4px 0 0;
+        font-size: 12px;
+        opacity: 0.75;
+      }
       #ui {
         position: fixed;
         left: 0;
         right: 0;
-        bottom: 24px;
+        bottom: 0;
+        z-index: 2;
+        padding: 12px 12px max(16px, env(safe-area-inset-bottom));
+        background: linear-gradient(to top, rgba(11, 29, 58, 0.95), transparent);
+      }
+      #nav {
         display: flex;
         gap: 12px;
         justify-content: center;
-        align-items: center;
-        z-index: 2;
+        margin-bottom: 10px;
       }
-      button {
+      #nav button {
         width: 56px;
         height: 56px;
         border: 0;
         border-radius: 50%;
-        background: rgba(255, 232, 163, 0.15);
+        background: rgba(255, 232, 163, 0.18);
         color: #ffe8a3;
         font-size: 24px;
       }
-      #label {
-        position: fixed;
-        top: 16px;
-        width: 100%;
-        text-align: center;
-        z-index: 2;
+      #list {
+        display: flex;
+        gap: 8px;
+        overflow-x: auto;
+        padding: 4px 2px 8px;
+        -webkit-overflow-scrolling: touch;
+      }
+      #list button {
+        flex: 0 0 auto;
+        border: 1px solid rgba(255, 232, 163, 0.35);
+        border-radius: 999px;
+        padding: 8px 12px;
+        background: rgba(255, 255, 255, 0.06);
+        color: #ffe8a3;
+        font-size: 13px;
+        white-space: nowrap;
+      }
+      #list button.active {
+        background: #f4a261;
+        color: #0b1d3a;
+        border-color: #f4a261;
+        font-weight: 700;
+      }
+      #list button:disabled {
+        opacity: 0.45;
       }
     </style>
     <script type="importmap">
@@ -56,11 +106,18 @@
     </script>
   </head>
   <body>
-    <div id="label">Загрузка…</div>
+    <div id="top">
+      <h1>Одна модель · анимации с других GLB</h1>
+      <p id="label">Загрузка…</p>
+      <p id="hint">Стрелки или чипы ниже — тот же персонаж, другой эмоут</p>
+    </div>
     <canvas id="c"></canvas>
     <div id="ui">
-      <button id="prev" type="button">←</button>
-      <button id="next" type="button">→</button>
+      <div id="nav">
+        <button id="prev" type="button" aria-label="Prev">←</button>
+        <button id="next" type="button" aria-label="Next">→</button>
+      </div>
+      <div id="list"></div>
     </div>
     <script type="module">
       import * as THREE from "three";
@@ -68,9 +125,10 @@
       import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
       const label = document.getElementById("label");
+      const listEl = document.getElementById("list");
       const canvas = document.getElementById("c");
       const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-      renderer.setPixelRatio(devicePixelRatio);
+      renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
       renderer.outputColorSpace = THREE.SRGBColorSpace;
 
       const scene = new THREE.Scene();
@@ -87,7 +145,8 @@
 
       const loader = new GLTFLoader();
       const manifest = await fetch("./models/manifest.json").then((r) => r.json());
-      label.textContent = "Загрузка модели…";
+
+      label.textContent = "Загрузка персонажа (main)…";
       const main = await loader.loadAsync("./models/main.glb");
       const model = main.scene;
       const box = new THREE.Box3().setFromObject(model);
@@ -99,47 +158,71 @@
       scene.add(model);
 
       const mixer = new THREE.AnimationMixer(model);
-      const slots = manifest.clips.map((e) => ({ ...e, clip: null }));
+      const slots = manifest.clips.map((e) => ({ ...e, clip: null, btn: null }));
+
+      // Idle сразу с main
       if (main.animations?.[0] && slots[0]?.file === "main.glb") {
         slots[0].clip = main.animations[0].clone();
         slots[0].clip.name = slots[0].label;
       }
 
+      slots.forEach((slot, i) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.textContent = `${i + 1}. ${slot.label}`;
+        btn.disabled = !slot.clip;
+        btn.onclick = () => play(i);
+        slot.btn = btn;
+        listEl.appendChild(btn);
+      });
+
       let index = 0;
       let action = null;
-      const inflight = new Map();
 
-      async function ensure(i) {
-        const slot = slots[i];
-        if (slot.clip) return slot.clip;
-        if (inflight.has(i)) return inflight.get(i);
-        const p = loader.loadAsync("./models/" + slot.file).then((g) => {
-          const clip = g.animations[0].clone();
-          clip.name = slot.label;
-          slot.clip = clip;
-          return clip;
+      function setActive(i) {
+        slots.forEach((s, j) => s.btn.classList.toggle("active", j === i));
+      }
+
+      async function loadAllClips() {
+        const jobs = slots.map(async (slot, i) => {
+          if (slot.clip) {
+            slot.btn.disabled = false;
+            return;
+          }
+          const g = await loader.loadAsync("./models/" + slot.file);
+          if (!g.animations?.[0]) return;
+          slot.clip = g.animations[0].clone();
+          slot.clip.name = slot.label;
+          slot.btn.disabled = false;
+          label.textContent = `Подгружаю анимации… ${i + 1}/${slots.length}`;
         });
-        inflight.set(i, p);
-        try {
-          return await p;
-        } finally {
-          inflight.delete(i);
-        }
+        await Promise.all(jobs);
       }
 
       async function play(i) {
         index = (i + slots.length) % slots.length;
-        label.textContent = `${index + 1}/${slots.length} · ${slots[index].label}…`;
-        const clip = await ensure(index);
-        const next = mixer.clipAction(clip);
-        next.reset().setLoop(THREE.LoopRepeat, Infinity).fadeIn(0.2).play();
-        if (action && action !== next) action.fadeOut(0.2);
+        const slot = slots[index];
+        if (!slot.clip) {
+          label.textContent = `Гружу ${slot.label}…`;
+          const g = await loader.loadAsync("./models/" + slot.file);
+          slot.clip = g.animations[0].clone();
+          slot.clip.name = slot.label;
+          slot.btn.disabled = false;
+        }
+        const next = mixer.clipAction(slot.clip);
+        next.reset().setLoop(THREE.LoopRepeat, Infinity).fadeIn(0.15).play();
+        if (action && action !== next) action.fadeOut(0.15);
         action = next;
-        label.textContent = `${index + 1}/${slots.length} · ${slots[index].label}`;
-        ensure((index + 1) % slots.length).catch(() => {});
+        setActive(index);
+        label.textContent = `${index + 1}/${slots.length} · ${slot.label}`;
+        slot.btn.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
       }
 
       await play(0);
+      label.textContent = `1/${slots.length} · ${slots[0].label} · гружу остальные…`;
+      loadAllClips().then(() => {
+        label.textContent = `${index + 1}/${slots.length} · ${slots[index].label}`;
+      });
 
       document.getElementById("prev").onclick = () => play(index - 1);
       document.getElementById("next").onclick = () => play(index + 1);
