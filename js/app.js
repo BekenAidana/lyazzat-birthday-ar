@@ -182,9 +182,9 @@ function placeCharacterOnMarker(model) {
 
   rig.add(model);
   // MindAR: плоскость метки = XY, наружу к камере = +Z
-  // +180° по X — лицом к камере, не спиной
-  rig.rotation.x = -Math.PI / 2 + Math.PI;
-  rig.rotation.z = Math.PI;
+  // Стоит на карточке; 180° по Z — лицом к камере (не спиной)
+  rig.rotation.x = -Math.PI / 2;
+  rig.rotation.z = 0;
 
   const shadow = new THREE.Mesh(
     new THREE.CircleGeometry(0.28, 48),
