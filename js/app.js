@@ -149,8 +149,8 @@ function placeCharacterOnMarker(model) {
   );
 
   rig.add(model);
+  // Стоит на карточке лицом вверх к камере
   rig.rotation.x = -Math.PI / 2;
-  rig.rotation.z = Math.PI;
 
   const shadow = new THREE.Mesh(
     new THREE.CircleGeometry(0.32, 48),
@@ -181,9 +181,6 @@ async function setupAR() {
     uiLoading: "no",
     uiScanning: "yes",
     uiError: "yes",
-    // Сглаживание трекинга — меньше дёрганья/«треска» позы
-    filterMinCF: 0.0001,
-    filterBeta: 0.001,
   });
 
   const { renderer, scene, camera } = mindarThree;
@@ -203,26 +200,8 @@ async function setupAR() {
   ]);
 
   const { root, model } = placeCharacterOnMarker(mainGltf.scene);
-  // Плавное следование за меткой (меньше дрожи без калибровки)
-  const smooth = new THREE.Group();
-  smooth.visible = false;
-  smooth.add(root);
-  scene.add(smooth);
-  let tracking = false;
-  const _pos = new THREE.Vector3();
-  const _quat = new THREE.Quaternion();
-  const _scale = new THREE.Vector3();
-  anchor.onTargetFound = () => {
-    tracking = true;
-    smooth.visible = true;
-    anchor.group.matrixWorld.decompose(_pos, _quat, _scale);
-    smooth.position.copy(_pos);
-    smooth.quaternion.copy(_quat);
-  };
-  anchor.onTargetLost = () => {
-    tracking = false;
-    smooth.visible = false;
-  };
+  // Просто на метке — без кастомной «калибровки»
+  anchor.group.add(root);
 
   const manifest = await fetch(MANIFEST_URL).then((r) => r.json());
   clipSlots = manifest.clips.map((entry) => ({
@@ -241,12 +220,6 @@ async function setupAR() {
 
   renderer.setAnimationLoop(() => {
     const dt = clock.getDelta();
-    if (tracking) {
-      anchor.group.matrixWorld.decompose(_pos, _quat, _scale);
-      const a = 1 - Math.exp(-8 * dt);
-      smooth.position.lerp(_pos, a);
-      smooth.quaternion.slerp(_quat, a);
-    }
     if (mixer) mixer.update(dt);
     if (confetti) confetti.update();
     renderer.render(scene, camera);
