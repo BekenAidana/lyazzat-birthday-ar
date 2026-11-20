@@ -10,6 +10,25 @@ const NEXT_BTN = document.getElementById("next-btn");
 const MUTE_BTN = document.getElementById("mute-btn");
 const OVERLAY = document.getElementById("start-overlay");
 const CONFETTI_CANVAS = document.getElementById("confetti");
+const UNLOCK = document.getElementById("unlock-banner");
+
+let unlockShown = false;
+
+function showUnlock() {
+  if (!UNLOCK || unlockShown) return;
+  unlockShown = true;
+  UNLOCK.classList.remove("hide");
+  UNLOCK.classList.add("show");
+  UNLOCK.setAttribute("aria-hidden", "false");
+  window.setTimeout(() => {
+    UNLOCK.classList.add("hide");
+    UNLOCK.classList.remove("show");
+    window.setTimeout(() => {
+      UNLOCK.classList.remove("hide");
+      UNLOCK.setAttribute("aria-hidden", "true");
+    }, 400);
+  }, 2600);
+}
 
 const MANIFEST_URL = "./models/manifest.json";
 const MARKER_MIND = "./assets/targets.mind";
@@ -237,20 +256,22 @@ async function setupAR() {
     tracking = true;
     locked = false;
     stableTime = 0;
+    unlockShown = false;
     holder.visible = true;
     pivot.updateWorldMatrix(true, false);
     pivot.matrixWorld.decompose(_pos, _quat, _scl);
     holder.position.copy(_pos);
     holder.quaternion.copy(_quat);
     _lastPos.copy(_pos);
-    setStatus("Держи ровно… фиксирую");
+    setStatus("Держи ровно… unlocking");
+    showUnlock();
   };
   anchor.onTargetLost = () => {
     tracking = false;
     locked = false;
     stableTime = 0;
     holder.visible = false;
-    setStatus("Ищу метку… наведи на print/card-front");
+    setStatus("Наведи на карточку с силуэтом");
   };
 
   const manifest = await fetch(MANIFEST_URL).then((r) => r.json());
@@ -265,7 +286,7 @@ async function setupAR() {
   confetti = createConfetti(CONFETTI_CANVAS);
   started = true;
   OVERLAY.classList.add("hidden");
-  setStatus("Ищу метку… открой print/card-front.png на другом экране");
+  setStatus("Наведи на карточку с силуэтом");
   setLabel("Загрузка Celebrating…");
 
   renderer.setAnimationLoop(() => {
