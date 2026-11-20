@@ -160,8 +160,9 @@ function placeCharacterOnMarker(model) {
   );
 
   rig.add(model);
-  // Стоит «из» карточки к камере
+  // Стоит из карточки к камере, не вверх ногами
   rig.rotation.x = -Math.PI / 2;
+  rig.rotation.z = Math.PI;
 
   const shadow = new THREE.Mesh(
     new THREE.CircleGeometry(0.28, 48),
