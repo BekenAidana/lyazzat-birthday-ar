@@ -1,0 +1,13 @@
+node_modules/
+.DS_Store
+print/_qr_tmp.png
+assets/marker.svg.png
+*.log
+# duplicates — канон в models/
+/model.glb
+/model main.glb
+/model (*).glb
+playwright-report/
+test-results/
+
+dist/

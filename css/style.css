@@ -1,0 +1,158 @@
+:root {
+  --ink: #0b1d3a;
+  --gold: #ffe8a3;
+  --coral: #e76f51;
+  --sand: #f4a261;
+  --glass: rgba(11, 29, 58, 0.72);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+  background: #050b16;
+  color: #fff;
+}
+
+#ar-container {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+#confetti {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 5;
+}
+
+#hud {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: max(16px, env(safe-area-inset-top)) 16px
+    max(20px, env(safe-area-inset-bottom));
+}
+
+#hud .top {
+  text-align: center;
+}
+
+#title {
+  margin: 0;
+  font-size: clamp(22px, 5vw, 34px);
+  letter-spacing: 0.12em;
+  color: var(--gold);
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.55);
+}
+
+#status,
+#emote-label {
+  margin: 8px 0 0;
+  font-size: 14px;
+  opacity: 0.95;
+}
+
+#controls {
+  pointer-events: auto;
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  align-items: center;
+}
+
+.nav-btn {
+  width: 64px;
+  height: 64px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--glass);
+  color: var(--gold);
+  font-size: 28px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.nav-btn:active {
+  transform: scale(0.96);
+  background: rgba(231, 111, 81, 0.85);
+  color: #fff;
+}
+
+#start-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(244, 162, 97, 0.35), transparent 40%),
+    radial-gradient(circle at 80% 10%, rgba(231, 111, 81, 0.3), transparent 35%),
+    linear-gradient(160deg, #0b1d3a, #163b6b 55%, #1b4332);
+}
+
+#start-overlay.hidden {
+  display: none;
+}
+
+.card {
+  width: min(420px, 100%);
+  padding: 28px 24px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 232, 163, 0.35);
+  backdrop-filter: blur(16px);
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+}
+
+.card h1 {
+  margin: 0 0 8px;
+  font-size: 28px;
+  color: var(--gold);
+  letter-spacing: 0.08em;
+}
+
+.card p {
+  margin: 0 0 20px;
+  line-height: 1.45;
+  opacity: 0.92;
+}
+
+#start-btn {
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  padding: 14px 28px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+  background: linear-gradient(135deg, var(--gold), var(--sand));
+  box-shadow: 0 10px 30px rgba(244, 162, 97, 0.35);
+}
+
+#start-btn:disabled {
+  opacity: 0.6;
+}
+
+.hint {
+  margin-top: 14px;
+  font-size: 12px;
+  opacity: 0.75;
+}

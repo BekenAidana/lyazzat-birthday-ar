@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1600" viewBox="0 0 1200 1600">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0B1D3A"/>
+      <stop offset="55%" stop-color="#163B6B"/>
+      <stop offset="100%" stop-color="#F4A261"/>
+    </linearGradient>
+    <pattern id="dots" width="48" height="48" patternUnits="userSpaceOnUse">
+      <circle cx="8" cy="8" r="4" fill="#FFE8A3" fill-opacity="0.55"/>
+      <circle cx="32" cy="28" r="3" fill="#FFFFFF" fill-opacity="0.35"/>
+      <rect x="20" y="4" width="10" height="10" fill="#E76F51" fill-opacity="0.45" transform="rotate(20 25 9)"/>
+    </pattern>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="1600" fill="url(#bg)"/>
+  <rect width="1200" height="1600" fill="url(#dots)"/>
+
+  <!-- high-contrast frame for tracking -->
+  <rect x="48" y="48" width="1104" height="1504" rx="36" fill="none" stroke="#FFE8A3" stroke-width="18"/>
+  <rect x="84" y="84" width="1032" height="1432" rx="28" fill="none" stroke="#FFFFFF" stroke-width="6" stroke-dasharray="18 14"/>
+
+  <!-- corner glyphs (unique features) -->
+  <g fill="#FFE8A3">
+    <path d="M120 140 h120 v28 h-92 v92 h-28 z"/>
+    <path d="M1080 140 h-120 v28 h92 v92 h28 z"/>
+    <path d="M120 1460 h120 v-28 h-92 v-92 h-28 z"/>
+    <path d="M1080 1460 h-120 v-28 h92 v-92 h28 z"/>
+  </g>
+
+  <g filter="url(#shadow)" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif">
+    <text x="600" y="320" fill="#FFE8A3" font-size="64" letter-spacing="8">HAPPY BIRTHDAY</text>
+    <text x="600" y="520" fill="#FFFFFF" font-size="140" font-weight="700">/"</text>
+  </g>
+
+  <!-- center emblem -->
+  <g transform="translate(600 880)" filter="url(#shadow)">
+    <circle r="210" fill="#1B4332" stroke="#FFE8A3" stroke-width="14"/>
+    <circle r="168" fill="none" stroke="#E76F51" stroke-width="8" stroke-dasharray="16 10"/>
+    <circle r="120" fill="#F4A261"/>
+    <text y="28" text-anchor="middle" fill="#0B1D3A" font-family="Georgia, serif" font-size="92" font-weight="700">AR</text>
+    <text y="78" text-anchor="middle" fill="#0B1D3A" font-family="Arial, sans-serif" font-size="28" letter-spacing="4">CARD</text>
+  </g>
+
+  <text x="600" y="1280" text-anchor="middle" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="36" opacity="0.95">
+    02548 :0<5@C  8 O B0=FCN
+  </text>
+  <text x="600" y="1350" text-anchor="middle" fill="#FFE8A3" font-family="Arial, sans-serif" font-size="28">
+    A ;N1>2LN · birthday gift
+  </text>
+
+  <!-- bottom unique barcode-like pattern for tracking -->
+  <g transform="translate(180 1420)">
+    <rect width="18" height="70" fill="#FFE8A3"/>
+    <rect x="30" width="8" height="70" fill="#fff"/>
+    <rect x="48" width="22" height="70" fill="#E76F51"/>
+    <rect x="80" width="10" height="70" fill="#FFE8A3"/>
+    <rect x="100" width="28" height="70" fill="#fff"/>
+    <rect x="138" width="12" height="70" fill="#E76F51"/>
+    <rect x="160" width="20" height="70" fill="#FFE8A3"/>
+    <rect x="190" width="8" height="70" fill="#fff"/>
+    <rect x="210" width="26" height="70" fill="#E76F51"/>
+    <rect x="246" width="14" height="70" fill="#FFE8A3"/>
+    <rect x="270" width="9" height="70" fill="#fff"/>
+    <rect x="290" width="24" height="70" fill="#E76F51"/>
+    <rect x="324" width="16" height="70" fill="#FFE8A3"/>
+    <rect x="350" width="11" height="70" fill="#fff"/>
+    <rect x="372" width="30" height="70" fill="#E76F51"/>
+    <rect x="412" width="8" height="70" fill="#FFE8A3"/>
+    <rect x="430" width="22" height="70" fill="#fff"/>
+    <rect x="462" width="14" height="70" fill="#E76F51"/>
+    <rect x="486" width="20" height="70" fill="#FFE8A3"/>
+    <rect x="516" width="10" height="70" fill="#fff"/>
+    <rect x="536" width="28" height="70" fill="#E76F51"/>
+    <rect x="574" width="16" height="70" fill="#FFE8A3"/>
+    <rect x="600" width="8" height="70" fill="#fff"/>
+    <rect x="618" width="24" height="70" fill="#E76F51"/>
+    <rect x="652" width="18" height="70" fill="#FFE8A3"/>
+    <rect x="680" width="12" height="70" fill="#fff"/>
+    <rect x="702" width="30" height="70" fill="#E76F51"/>
+    <rect x="742" width="14" height="70" fill="#FFE8A3"/>
+    <rect x="766" width="20" height="70" fill="#fff"/>
+    <rect x="796" width="16" height="70" fill="#E76F51"/>
+  </g>
+</svg>

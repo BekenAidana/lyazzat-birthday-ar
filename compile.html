@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Compile AR marker → targets.mind</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        max-width: 720px;
+        margin: 40px auto;
+        padding: 0 16px;
+        background: #0b1d3a;
+        color: #ffe8a3;
+      }
+      button {
+        padding: 12px 18px;
+        border: 0;
+        border-radius: 999px;
+        background: #f4a261;
+        color: #0b1d3a;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      #log {
+        white-space: pre-wrap;
+        background: rgba(0, 0, 0, 0.35);
+        padding: 12px;
+        border-radius: 12px;
+        min-height: 80px;
+      }
+      img {
+        max-width: 280px;
+        border-radius: 12px;
+        border: 2px solid #ffe8a3;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Compile marker</h1>
+    <p>Собирает <code>targets.mind</code> из <code>assets/marker.png</code>.</p>
+    <p><img id="preview" src="./assets/marker.png" alt="marker" /></p>
+    <p>
+      <button id="run" type="button">Compile &amp; Download targets.mind</button>
+    </p>
+    <div id="log">Готово к компиляции…</div>
+
+    <script type="module">
+      import { Compiler } from "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image.prod.js";
+
+      const logEl = document.getElementById("log");
+      function log(msg) {
+        logEl.textContent += "\n" + msg;
+      }
+
+      document.getElementById("run").onclick = async () => {
+        try {
+          logEl.textContent = "Загрузка картинки…";
+          const img = new Image();
+          img.crossOrigin = "anonymous";
+          await new Promise((resolve, reject) => {
+            img.onload = resolve;
+            img.onerror = reject;
+            img.src = "./assets/marker.png?t=" + Date.now();
+          });
+
+          const compiler = new Compiler();
+          await compiler.compileImageTargets([img], (progress) => {
+            logEl.textContent = "Компиляция: " + progress.toFixed(1) + "%";
+          });
+
+          const exportedBuffer = await compiler.exportData();
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(new Blob([exportedBuffer]));
+          a.download = "targets.mind";
+          a.click();
+          log("Готово. Положи файл в assets/targets.mind");
+        } catch (e) {
+          console.error(e);
+          log("Ошибка: " + (e.message || e));
+        }
+      };
+    </script>
+  </body>
+</html>

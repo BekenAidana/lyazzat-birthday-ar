@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>auto compile</title>
+  </head>
+  <body>
+    <script type="module">
+      import { Compiler } from "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image.prod.js";
+
+      window.__DONE = false;
+      try {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        await new Promise((resolve, reject) => {
+          img.onload = resolve;
+          img.onerror = reject;
+          img.src = "./assets/marker.png";
+        });
+        console.log("image loaded", img.width, img.height);
+        const compiler = new Compiler();
+        await compiler.compileImageTargets([img], (p) => {
+          console.log("progress", Number(p).toFixed(1));
+        });
+        const exportedBuffer = await compiler.exportData();
+        const bytes = new Uint8Array(exportedBuffer);
+        let binary = "";
+        const chunk = 0x8000;
+        for (let i = 0; i < bytes.length; i += chunk) {
+          binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+        }
+        window.__MIND_B64 = btoa(binary);
+        window.__DONE = true;
+        console.log("done", bytes.length);
+      } catch (e) {
+        console.error(String(e?.stack || e));
+        window.__ERROR = String(e);
+        window.__DONE = true;
+      }
+    </script>
+  </body>
+</html>
