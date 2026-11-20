@@ -220,6 +220,11 @@ async function setupAR() {
     uiLoading: "no",
     uiScanning: "yes",
     uiError: "yes",
+    // One Euro filter: меньше дрожи (чуть больше инерции)
+    filterMinCF: 0.0001,
+    filterBeta: 0.001,
+    warmupTolerance: 5,
+    missTolerance: 10,
   });
 
   const { renderer, scene, camera } = mindarThree;
@@ -239,17 +244,47 @@ async function setupAR() {
   ]);
 
   const { root, model } = placeCharacterOnMarker(mainGltf.scene);
-  root.visible = false;
-  anchor.group.add(root);
+
+  // Держатель в мире сцены: сначала сглаживаем позу метки, потом LOCK
+  // (так делают «заморозку» — камера крутится, модель не дёргается)
+  const pivot = new THREE.Object3D();
+  anchor.group.add(pivot);
+  const holder = new THREE.Group();
+  holder.visible = false;
+  holder.add(root);
+  scene.add(holder);
+
+  const _pos = new THREE.Vector3();
+  const _quat = new THREE.Quaternion();
+  const _scl = new THREE.Vector3();
+  const _lastPos = new THREE.Vector3();
+  let tracking = false;
+  let locked = false;
+  let stableTime = 0;
+
+  function snapHolderToMarker() {
+    pivot.updateWorldMatrix(true, false);
+    pivot.matrixWorld.decompose(_pos, _quat, _scl);
+    holder.position.copy(_pos);
+    holder.quaternion.copy(_quat);
+    _lastPos.copy(_pos);
+  }
 
   anchor.onTargetFound = () => {
-    root.visible = true;
+    tracking = true;
+    locked = false;
+    stableTime = 0;
+    holder.visible = true;
+    snapHolderToMarker();
     unlockShown = false;
-    setStatus("Character unlocked!");
+    setStatus("Держи ровно… фиксируем");
     showUnlock();
   };
   anchor.onTargetLost = () => {
-    root.visible = false;
+    tracking = false;
+    locked = false;
+    stableTime = 0;
+    holder.visible = false;
     setStatus("Наведи на карточку с силуэтом");
   };
 
@@ -270,6 +305,37 @@ async function setupAR() {
 
   renderer.setAnimationLoop(() => {
     const dt = clock.getDelta();
+    if (tracking) {
+      pivot.updateWorldMatrix(true, false);
+      pivot.matrixWorld.decompose(_pos, _quat, _scl);
+
+      if (!locked) {
+        const a = 1 - Math.exp(-7 * dt);
+        holder.position.lerp(_pos, a);
+        holder.quaternion.slerp(_quat, a);
+
+        const still = _lastPos.distanceTo(_pos);
+        const lag = holder.position.distanceTo(_pos);
+        _lastPos.copy(_pos);
+
+        if (still < 0.0035 && lag < 0.02) {
+          stableTime += dt;
+          if (stableTime > 0.55) {
+            locked = true;
+            holder.position.copy(_pos);
+            holder.quaternion.copy(_quat);
+            setStatus("Зафиксировано ✓ крути камеру");
+          }
+        } else {
+          stableTime = 0;
+        }
+      } else if (holder.position.distanceTo(_pos) > 0.14) {
+        // Карточку сильно сдвинули — снова плавно догоняем и лочим
+        locked = false;
+        stableTime = 0;
+        setStatus("Держи ровно… фиксируем");
+      }
+    }
     if (mixer) mixer.update(dt);
     if (confetti) confetti.update();
     renderer.render(scene, camera);
