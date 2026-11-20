@@ -134,9 +134,8 @@
       const scene = new THREE.Scene();
       scene.background = new THREE.Color(0x0b1d3a);
       const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 100);
-      camera.position.set(0, 1.2, 2.4);
       const controls = new OrbitControls(camera, canvas);
-      controls.target.set(0, 0.9, 0);
+      controls.enableDamping = true;
 
       scene.add(new THREE.HemisphereLight(0xffffff, 0x334455, 1.2));
       const key = new THREE.DirectionalLight(0xffffff, 1.5);
@@ -149,13 +148,26 @@
       label.textContent = "Загрузка персонажа (main)…";
       const main = await loader.loadAsync("./models/main.glb");
       const model = main.scene;
-      const box = new THREE.Box3().setFromObject(model);
-      const size = box.getSize(new THREE.Vector3());
-      const center = box.getCenter(new THREE.Vector3());
-      const scale = 1.6 / Math.max(size.x, size.y, size.z);
-      model.scale.setScalar(scale);
-      model.position.set(-center.x * scale, -box.min.y * scale, -center.z * scale);
       scene.add(model);
+
+      // Масштаб → центр по X/Z → ноги на земле → камера ровно на середину
+      const raw = new THREE.Box3().setFromObject(model);
+      const rawSize = raw.getSize(new THREE.Vector3());
+      const scale = 1.55 / Math.max(rawSize.x, rawSize.y, rawSize.z, 0.001);
+      model.scale.setScalar(scale);
+
+      const box = new THREE.Box3().setFromObject(model);
+      const mid = box.getCenter(new THREE.Vector3());
+      model.position.x += -mid.x;
+      model.position.y += -box.min.y;
+      model.position.z += -mid.z;
+
+      const framed = new THREE.Box3().setFromObject(model);
+      const focus = framed.getCenter(new THREE.Vector3());
+      const tall = framed.getSize(new THREE.Vector3()).y;
+      controls.target.copy(focus);
+      camera.position.set(focus.x, focus.y, focus.z + tall * 2.05);
+      controls.update();
 
       const mixer = new THREE.AnimationMixer(model);
       const slots = manifest.clips.map((e) => ({ ...e, clip: null, btn: null }));
@@ -231,6 +243,10 @@
         const h = innerHeight;
         renderer.setSize(w, h, false);
         camera.aspect = w / h;
+        // Нижняя панель выше шапки — сдвигаем кадр, чтобы модель была по центру свободной зоны
+        const topPad = 78;
+        const bottomPad = 168;
+        camera.setViewOffset(w, h, 0, (bottomPad - topPad) * 0.5, w, h);
         camera.updateProjectionMatrix();
       }
       resize();

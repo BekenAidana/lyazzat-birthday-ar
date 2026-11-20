@@ -287,7 +287,7 @@ async function setupAR() {
   started = true;
   OVERLAY.classList.add("hidden");
   setStatus("Наведи на карточку с силуэтом");
-  setLabel("Загрузка Celebrating…");
+  setLabel("Загрузка Action…");
 
   renderer.setAnimationLoop(() => {
     const dt = clock.getDelta();
@@ -325,11 +325,8 @@ async function setupAR() {
     renderer.render(scene, camera);
   });
 
-  // Главный эмоут сразу после старта камеры, остальное в фоне
+  // Только первый эмоут; соседние подгрузятся при переключении
   await playClip(0);
-  for (let i = 1; i < clipSlots.length; i++) {
-    ensureClip(i).catch(() => {});
-  }
 }
 
 function nextEmote(dir = 1) {
