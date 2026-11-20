@@ -181,10 +181,12 @@ function placeCharacterOnMarker(model) {
   );
 
   rig.add(model);
-  // MindAR: XY = плоскость картинки (+Y вверх метки), +Z к камере.
-  // Модель Y-up и смотрит в −Z → без наклона по X (иначе вверх ногами),
-  // +180° по Y = лицом на камеру (+Z).
-  rig.rotation.set(0, Math.PI, 0);
+  // MindAR: плоскость метки = XY, +Z наружу к камере.
+  // Модель Y-up: −90° по X = встаёт из карточки; Z=180 = не вверх ногами;
+  // Y=180 = лицом к зрителю (без этого была спина, как на фото).
+  rig.rotation.x = -Math.PI / 2;
+  rig.rotation.y = Math.PI;
+  rig.rotation.z = Math.PI;
 
   const shadow = new THREE.Mesh(
     new THREE.CircleGeometry(0.28, 48),
@@ -195,18 +197,15 @@ function placeCharacterOnMarker(model) {
       depthWrite: false,
     })
   );
-  // Тень под ногами на плоскости карточки
-  shadow.rotation.x = -Math.PI / 2;
-  shadow.position.y = 0.002;
+  shadow.position.z = 0.002;
   shadow.frustumCulled = false;
 
   const root = new THREE.Group();
   root.add(shadow);
   root.add(rig);
-  // Чуть к камере, чтобы не уходила внутрь карточки
   root.position.z = 0.02;
   root.frustumCulled = false;
-  return { root, model, rig };
+  return { root, model };
 }
 
 async function setupAR() {
@@ -239,13 +238,9 @@ async function setupAR() {
     mindarThree.start(),
   ]);
 
-  const { root, model, rig } = placeCharacterOnMarker(mainGltf.scene);
-  // Снова прямо на якорь MindAR — world-lock уводил модель из кадра
+  const { root, model } = placeCharacterOnMarker(mainGltf.scene);
   root.visible = false;
   anchor.group.add(root);
-
-  const _camWorld = new THREE.Vector3();
-  const _camLocal = new THREE.Vector3();
 
   anchor.onTargetFound = () => {
     root.visible = true;
@@ -275,18 +270,6 @@ async function setupAR() {
 
   renderer.setAnimationLoop(() => {
     const dt = clock.getDelta();
-    // Держим голову/корпус к камере, не ложа набок (только yaw)
-    if (root.visible && rig) {
-      camera.getWorldPosition(_camWorld);
-      _camLocal.copy(_camWorld);
-      anchor.group.worldToLocal(_camLocal);
-      // Модель смотрит в −Z → yaw к камере с учётом этого
-      if (_camLocal.x * _camLocal.x + _camLocal.z * _camLocal.z > 1e-8) {
-        rig.rotation.y = Math.atan2(-_camLocal.x, -_camLocal.z);
-      }
-      rig.rotation.x = 0;
-      rig.rotation.z = 0;
-    }
     if (mixer) mixer.update(dt);
     if (confetti) confetti.update();
     renderer.render(scene, camera);
