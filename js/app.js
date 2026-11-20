@@ -154,22 +154,7 @@ function placeCharacterOnMarker(model) {
     -box.min.y * scale,
     -center.z * scale
   );
-  rig.add(model);
-  // Стоит на метке (+Z к камере), развернута правильно (не вверх ногами)
-  rig.rotation.x = -Math.PI / 2;
-  rig.rotation.z = Math.PI;
-
-  const shadow = new THREE.Mesh(
-    new THREE.CircleGeometry(0.22, 48),
-    new THREE.MeshBasicMaterial({
-      color: 0x000000,
-      transparent: true,
-      opacity: 0.3,
-      depthWrite: false,
-    })
-  );
-  shadow.position.z = 0.005;
-
+  // Табличка в локальном пространстве модели: над головой, лицом туда же, куда она
   const titleCanvas = document.createElement("canvas");
   titleCanvas.width = 1024;
   titleCanvas.height = 256;
@@ -191,13 +176,30 @@ function placeCharacterOnMarker(model) {
       side: THREE.DoubleSide,
     })
   );
-  title.position.set(0, 0, targetHeight + 0.1);
-  title.rotation.x = -Math.PI / 2;
+  // Y-up модель смотрит в -Z → плоскость разворачиваем к зрителю как лицо
+  title.position.set(0, size.y * scale + 0.08, 0);
+  title.rotation.y = Math.PI;
+
+  rig.add(model);
+  rig.add(title);
+  // Стоит на метке (+Z из карточки), не вверх ногами
+  rig.rotation.x = -Math.PI / 2;
+  rig.rotation.z = Math.PI;
+
+  const shadow = new THREE.Mesh(
+    new THREE.CircleGeometry(0.22, 48),
+    new THREE.MeshBasicMaterial({
+      color: 0x000000,
+      transparent: true,
+      opacity: 0.3,
+      depthWrite: false,
+    })
+  );
+  shadow.position.z = 0.005;
 
   const root = new THREE.Group();
   root.add(shadow);
   root.add(rig);
-  root.add(title);
   return { root, model };
 }
 
