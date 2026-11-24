@@ -220,11 +220,10 @@ async function setupAR() {
     uiLoading: "no",
     uiScanning: "yes",
     uiError: "yes",
-    // Лёгкий OneEuro + наше сглаживание в цикле (без hard-lock)
-    filterMinCF: 0.0005,
-    filterBeta: 1,
+    filterMinCF: 0.001,
+    filterBeta: 10,
     warmupTolerance: 2,
-    missTolerance: 8,
+    missTolerance: 5,
   });
 
   const { renderer, scene, camera } = mindarThree;
@@ -244,39 +243,17 @@ async function setupAR() {
   ]);
 
   const { root, model } = placeCharacterOnMarker(mainGltf.scene);
-
-  // Модель в сцене (не child якоря): копируем позу с демпфом —
-  // убирает мелкую дрожь, не «теряет» модель как hard-lock
-  const holder = new THREE.Group();
-  holder.visible = false;
-  holder.add(root);
-  scene.add(holder);
-
-  const _pos = new THREE.Vector3();
-  const _quat = new THREE.Quaternion();
-  const _scl = new THREE.Vector3();
-  let tracking = false;
-  let hasPose = false;
-
-  function readMarkerPose() {
-    // MindAR пишет прямо в matrix (matrixAutoUpdate=false)
-    anchor.group.updateMatrixWorld(true);
-    anchor.group.matrixWorld.decompose(_pos, _quat, _scl);
-    const e = anchor.group.matrixWorld.elements;
-    return Math.abs(e[12]) + Math.abs(e[13]) + Math.abs(e[14]) > 0.0005;
-  }
+  root.visible = false;
+  anchor.group.add(root);
 
   anchor.onTargetFound = () => {
-    tracking = true;
-    hasPose = false;
+    root.visible = true;
     unlockShown = false;
     setStatus("Character unlocked!");
     showUnlock();
   };
   anchor.onTargetLost = () => {
-    tracking = false;
-    hasPose = false;
-    holder.visible = false;
+    root.visible = false;
     setStatus("Наведи на карточку с силуэтом");
   };
 
@@ -297,20 +274,6 @@ async function setupAR() {
 
   renderer.setAnimationLoop(() => {
     const dt = clock.getDelta();
-    if (tracking && readMarkerPose()) {
-      if (!hasPose) {
-        // Первый валидный кадр — сразу snap, чтобы модель появилась
-        holder.position.copy(_pos);
-        holder.quaternion.copy(_quat);
-        holder.visible = true;
-        hasPose = true;
-      } else {
-        // Постоянный демпф: сглаживает дрожь, но следует за карточкой
-        const a = 1 - Math.exp(-14 * dt);
-        holder.position.lerp(_pos, a);
-        holder.quaternion.slerp(_quat, a);
-      }
-    }
     if (mixer) mixer.update(dt);
     if (confetti) confetti.update();
     renderer.render(scene, camera);
